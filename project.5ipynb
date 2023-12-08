@@ -1,0 +1,342 @@
+1 answer
+import pandas as pd
+
+def generate_car_matrix(data_path):
+    # Read the CSV file into a DataFrame
+    df = pd.read_csv(data_path, index_col='id_1')
+
+    # Extract unique values from id_2 to create columns and index
+    columns_and_index = sorted(df['id_2'].unique())
+
+    # Create a new DataFrame with id_2 values as columns and index
+    result_df = pd.DataFrame(index=columns_and_index, columns=columns_and_index)
+
+    # Fill the DataFrame with values from the 'car' column
+    for index, row in df.iterrows():
+        result_df.at[index, row['id_2']] = row['car']
+
+    # Fill diagonal values with 0
+    result_df = result_df.fillna(0)
+
+    return result_df
+
+
+data_path = 'dataset-1.csv'
+result_dataframe = generate_car_matrix(data_path)
+print(result_dataframe)
+ 
+
+
+2 answer
+import pandas as pd
+
+def get_type_count(data_path):
+    
+    df = pd.read_csv(data_path)
+
+    # Add a new categorical column 'car_type'
+    df['car_type'] = pd.cut(df['car'], bins=[-float('inf'), 15, 25, float('inf')],
+                            labels=['low', 'medium', 'high'], right=False)
+
+    # Calculate the count of occurrences for each car_type category
+    type_counts = df['car_type'].value_counts().to_dict()
+
+    # Sort the dictionary alphabetically based on keys
+    type_counts = dict(sorted(type_counts.items()))
+
+    return type_counts
+
+
+data_path = 'dataset-1.csv'
+result_dict = get_type_count(data_path)
+print(result_dict)
+
+
+
+
+3 answer
+import pandas as pd
+
+def get_bus_indexes(data_path):
+    
+    df = pd.read_csv(data_path)
+
+    # Calculate the mean value of the 'bus' column
+    bus_mean = df['bus'].mean()
+
+    # Identify indices where 'bus' values are greater than twice the mean
+    bus_indexes = df[df['bus'] > 2 * bus_mean].index.tolist()
+
+    
+    bus_indexes.sort()
+
+    return bus_indexes
+
+
+data_path = 'dataset-1.csv'
+result_list = get_bus_indexes(data_path)
+print(result_list)
+
+
+4 answer
+import pandas as pd
+
+def filter_routes(data_path):
+    
+    df = pd.read_csv(data_path)
+
+    # Group by 'route' and calculate the average of 'truck' column
+    route_avg_truck = df.groupby('route')['truck'].mean()
+
+    # Filter routes where the average of 'truck' column is greater than 7
+    filtered_routes = route_avg_truck[route_avg_truck > 7].index.tolist()
+
+    # Sort the list of routes in ascending order
+    filtered_routes.sort()
+
+    return filtered_routes
+
+
+data_path = 'dataset-1.csv'
+result_list = filter_routes(data_path)
+print(result_list)
+ 
+
+
+5 answer
+import pandas as pd
+
+def multiply_matrix(input_df):
+    
+    result_df = input_df.copy(deep=True)
+
+    
+    result_df = result_df.applymap(lambda x: x * 0.75 if x > 20 else x * 1.25)
+
+    
+    result_df = result_df.round(1)
+
+    return result_df
+
+
+
+result_df_from_question_1 = generate_car_matrix('dataset-1.csv')
+
+
+modified_result_df = multiply_matrix(result_df_from_question_1)
+print(modified_result_df)
+
+
+
+6 answer 
+import pandas as pd
+
+def verify_timestamps(data_path):
+    
+    df = pd.read_csv(data_path)
+
+    
+    df['start_timestamp'] = pd.to_datetime(df['startDay'] + ' ' + df['startTime'])
+    df['end_timestamp'] = pd.to_datetime(df['endDay'] + ' ' + df['endTime'])
+
+    
+    df['duration'] = df['end_timestamp'] - df['start_timestamp']
+
+    
+    grouped = df.groupby(['id', 'id_2']).apply(lambda x: (
+        x['duration'].max() > pd.Timedelta(hours=23, minutes=59, seconds=59)) or
+        (len(x['start_timestamp'].dt.date.unique()) != 7))
+
+    return grouped
+
+
+data_path = 'dataset-2.csv'
+result_series = verify_timestamps(data_path)
+print(result_series)
+
+
+
+pythom 2 task 
+
+
+
+
+
+import pandas as pd
+import networkx as nx
+
+def calculate_distance_matrix(data_path):
+    
+    df = pd.read_csv(data_path)
+
+    # Create a directed graph from the DataFrame
+    G = nx.from_pandas_edgelist(df, 'start_id', 'end_id', ['distance'])
+
+    # Calculate all-pairs shortest paths (cumulative distances) in the graph
+    shortest_paths = dict(nx.all_pairs_dijkstra_path_length(G, weight='distance'))
+
+    # Create a DataFrame with cumulative distances along known routes
+    ids = sorted(df['start_id'].unique())
+    result_df = pd.DataFrame(index=ids, columns=ids)
+
+    for id_1 in ids:
+        for id_2 in ids:
+            result_df.at[id_1, id_2] = shortest_paths[id_1].get(id_2, 0)
+
+    # Convert the distances to float and set diagonal values to 0
+    result_df = result_df.astype(float)
+    result_df.values[[range(len(ids))]*2] = 0.0
+
+    return result_df
+
+data_path = 'dataset-3.csv'
+result_dataframe = calculate_distance_matrix(data_path)
+print(result_dataframe)
+
+
+
+2 answer 
+
+import pandas as pd
+
+def unroll_distance_matrix(input_df):
+    # Get the column and index names from the input DataFrame
+    ids = input_df.index.tolist()
+
+    # Initialize lists to store unrolled data
+    id_start_list = []
+    id_end_list = []
+    distance_list = []
+
+    
+    for id_start in ids:
+        for id_end in ids:
+            if id_start != id_end:
+                id_start_list.append(id_start)
+                id_end_list.append(id_end)
+                distance_list.append(input_df.at[id_start, id_end])
+
+    # Create a new DataFrame from the unrolled data
+    result_df = pd.DataFrame({
+        'id_start': id_start_list,
+        'id_end': id_end_list,
+        'distance': distance_list
+    })
+
+    return result_df
+
+result_dataframe = generate_car_matrix('dataset-1.csv')
+
+
+unrolled_dataframe = unroll_distance_matrix(result_dataframe)
+print(unrolled_dataframe)
+
+
+
+
+
+3 answer
+
+
+
+
+import pandas as pd
+
+def find_ids_within_ten_percentage_threshold(input_df, reference_value):
+
+    reference_df = input_df[input_df['id_start'] == reference_value]
+
+
+    reference_average_distance = reference_df['distance'].mean()
+
+    # Calculate the threshold values within 10%
+    lower_threshold = reference_average_distance * 0.9
+    upper_threshold = reference_average_distance * 1.1
+
+    # Filter DataFrame based on the threshold values
+    result_df = input_df[(input_df['distance'] >= lower_threshold) & (input_df['distance'] <= upper_threshold)]
+
+    # Get unique values from the 'id_start' column and sort them
+    result_ids = sorted(result_df['id_start'].unique())
+
+    return result_ids
+
+reference_value = 1001400
+result_ids_list = find_ids_within_ten_percentage_threshold(unrolled_dataframe, reference_value)
+print(result_ids_list)
+
+
+
+
+4 answer
+
+
+import pandas as pd
+
+def calculate_toll_rate(input_df):
+    # Define rate coefficients for each vehicle type
+    rate_coefficients = {'moto': 0.8, 'car': 1.2, 'rv': 1.5, 'bus': 2.2, 'truck': 3.6}
+
+    # Create new columns for each vehicle type and calculate toll rates
+    for vehicle_type, rate_coefficient in rate_coefficients.items():
+        input_df[vehicle_type] = input_df['distance'] * rate_coefficient
+
+    return input_df
+
+result_dataframe_with_toll = calculate_toll_rate(unrolled_dataframe)
+print(result_dataframe_with_toll)
+
+
+
+
+
+
+5 answer
+import pandas as pd
+from datetime import time
+
+def calculate_time_based_toll_rates(input_df):
+    
+    weekday_time_ranges = [(time(0, 0, 0), time(10, 0, 0)),
+                           (time(10, 0, 0), time(18, 0, 0)),
+                           (time(18, 0, 0), time(23, 59, 59))]
+
+    weekend_time_ranges = [(time(0, 0, 0), time(23, 59, 59))]
+
+    # Create new columns for start_day, start_time, end_day, and end_time
+    input_df['start_day'] = input_df['start_timestamp'].dt.day_name()
+    input_df['start_time'] = input_df['start_timestamp'].dt.time
+    input_df['end_day'] = input_df['end_timestamp'].dt.day_name()
+    input_df['end_time'] = input_df['end_timestamp'].dt.time
+
+    
+    modified_rates = []
+
+    # Loop through the DataFrame to modify toll rates based on time ranges
+    for _, row in input_df.iterrows():
+        if row['start_day'] in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']:
+            for start_time, end_time in weekday_time_ranges:
+                if start_time <= row['start_time'] <= end_time and start_time <= row['end_time'] <= end_time:
+                    discount_factor = 0.8 if start_time <= row['start_time'] <= time(10, 0, 0) else 1.2
+                    break
+        else:  # Weekend
+            discount_factor = 0.7
+
+        # Apply discount factor to vehicle columns
+        modified_rates.append({
+            'moto': row['moto'] * discount_factor,
+            'car': row['car'] * discount_factor,
+            'rv': row['rv'] * discount_factor,
+            'bus': row['bus'] * discount_factor,
+            'truck': row['truck'] * discount_factor
+        })
+
+    # Convert the modified rates to a DataFrame and merge it with the original DataFrame
+    modified_rates_df = pd.DataFrame(modified_rates)
+    result_df = pd.concat([input_df, modified_rates_df], axis=1)
+
+    return result_df
+
+result_dataframe_with_time_based_toll = calculate_time_based_toll_rates(result_dataframe_with_toll)
+print(result_dataframe_with_time_based_toll)
+
